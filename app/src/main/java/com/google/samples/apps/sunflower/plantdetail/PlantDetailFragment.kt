@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.material.MaterialTheme
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.app.ShareCompat
 import androidx.core.widget.NestedScrollView
@@ -37,15 +38,49 @@ import com.google.samples.apps.sunflower.databinding.FragmentPlantDetailBinding
 import com.google.samples.apps.sunflower.utilities.InjectorUtils
 import com.google.samples.apps.sunflower.viewmodels.PlantDetailViewModel
 
-/**
- * A fragment representing a single Plant detail screen.
- */
 class PlantDetailFragment : Fragment() {
 
     private val args: PlantDetailFragmentArgs by navArgs()
 
     private val plantDetailViewModel: PlantDetailViewModel by viewModels {
-        InjectorUtils.providePlantDetailViewModelFactory(requireActivity(), args.plantId)
+        InjectorUtils
+            .providePlantDetailViewModelFactory(requireActivity(), args.plantId)
+    }
+
+    interface Callback {
+        fun add(plant: Plant?)
+    }
+
+    // Helper function for calling a share functionality.
+    // Should be used when user presses a share button/menu item.
+    @Suppress("DEPRECATION")
+    private fun createShareIntent() {
+        val shareText = plantDetailViewModel.plant.value.let { plant ->
+            if (plant == null) {
+                ""
+            } else {
+                getString(R.string.share_text_plant, plant.name)
+            }
+        }
+        val shareIntent = ShareCompat.IntentBuilder.from(requireActivity())
+            .setText(shareText)
+            .setType("text/plain")
+            .createChooserIntent()
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+        startActivity(shareIntent)
+    }
+
+    // FloatingActionButtons anchored to AppBarLayouts have their visibility
+    // controlled by the scroll position.
+    // We want to turn this behavior off to hide the FAB when it is clicked.
+    //
+    // This is adapted from Chris Banes' Stack Overflow answer:
+    // https://stackoverflow.com/a/41442923
+    private fun hideAppBarFab(fab: FloatingActionButton) {
+        val params = fab.layoutParams as CoordinatorLayout.LayoutParams
+        val behavior = params.behavior as FloatingActionButton.Behavior
+        behavior.isAutoHideEnabled = false
+        fab.hide()
     }
 
     override fun onCreateView(
@@ -71,7 +106,8 @@ class PlantDetailFragment : Fragment() {
 
             var isToolbarShown = false
 
-            // scroll change listener begins at Y = 0 when image is fully collapsed
+            // scroll change listener begins at Y = 0 when image is fully
+            // collapsed
             plantDetailScrollview.setOnScrollChangeListener(
                 NestedScrollView.OnScrollChangeListener { _, _, scrollY, _, _ ->
 
@@ -106,43 +142,15 @@ class PlantDetailFragment : Fragment() {
                     else -> false
                 }
             }
+
+            composeView.setContent {
+                MaterialTheme {
+                    PlantDetailDescription()
+                }
+            }
         }
         setHasOptionsMenu(true)
 
         return binding.root
-    }
-
-    // Helper function for calling a share functionality.
-    // Should be used when user presses a share button/menu item.
-    @Suppress("DEPRECATION")
-    private fun createShareIntent() {
-        val shareText = plantDetailViewModel.plant.value.let { plant ->
-            if (plant == null) {
-                ""
-            } else {
-                getString(R.string.share_text_plant, plant.name)
-            }
-        }
-        val shareIntent = ShareCompat.IntentBuilder.from(requireActivity())
-            .setText(shareText)
-            .setType("text/plain")
-            .createChooserIntent()
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-        startActivity(shareIntent)
-    }
-
-    // FloatingActionButtons anchored to AppBarLayouts have their visibility controlled by the scroll position.
-    // We want to turn this behavior off to hide the FAB when it is clicked.
-    //
-    // This is adapted from Chris Banes' Stack Overflow answer: https://stackoverflow.com/a/41442923
-    private fun hideAppBarFab(fab: FloatingActionButton) {
-        val params = fab.layoutParams as CoordinatorLayout.LayoutParams
-        val behavior = params.behavior as FloatingActionButton.Behavior
-        behavior.isAutoHideEnabled = false
-        fab.hide()
-    }
-
-    interface Callback {
-        fun add(plant: Plant?)
     }
 }
